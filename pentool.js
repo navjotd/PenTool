@@ -1,4 +1,7 @@
 //this is very, very rare. Please treat it with care.
+function isNumeric(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
 
 var Pentool = {};
 
@@ -14,7 +17,6 @@ Pentool.BaseModel.prototype.addObserver = function(view) {
 
 Pentool.BaseModel.prototype.updateObservers = function() {
 	for (var i = 0; i < this.observers.length; i++) {
-		// debugger;
 		this.observers[i].update(this);
 	}
 }
@@ -94,11 +96,13 @@ Pentool.Model.prototype.editSelection = function(x, y) {
 }
 
 Pentool.Model.prototype.makeSelection = function(x, y) {
+	//debugger;
 	var result = false;
 	var inRange = Pentool.inRange;
 	if (this.selection) {
 		result = this.editSelection(x, y);
 		if (result) {
+			//debugger;
 			this.updateObservers(this);
 			return true;
 		}
@@ -108,10 +112,12 @@ Pentool.Model.prototype.makeSelection = function(x, y) {
 	//check if click was close to another control point
 	for (var i = 0; i < this.segments.length; i++) {
 		if (i == 0) {
+			// debugger;
 			var p0 = this.segments[i].getP(0);
 			if (inRange(p0.elements[0], x, 5) && inRange(p0.elements[1], y, 5)) {
 				var s = new Pentool.Selection(null, p0, this.segments[i].getP(1), null, 0)
 				this.selection = s;
+				//debugger;
 				this.updateObservers(this);
 				return true;
 			}
@@ -122,16 +128,17 @@ Pentool.Model.prototype.makeSelection = function(x, y) {
 		var rIndex;
 		if (i == this.segments.length - 1) {
 			q1 = null;
-			next = null;
+			rIndex = null;
 		} else {
 			q1 = this.segments[i+1].getP(1);
-			next = i + 1;
+			rIndex = i + 1;
 		}
 
 
 		if (inRange(p3.elements[0], x, 5) && inRange(p3.elements[1], y, 5)) {
-			var s = new Pentool.Selection(this.segments[i].getP(2), p3, q1 , i, next);
+			var s = new Pentool.Selection(this.segments[i].getP(2), p3, q1 , i, rIndex);
 			this.selection = s;
+			//debugger;
 			this.updateObservers(this);
 			return true;
 		}
@@ -143,12 +150,12 @@ Pentool.Model.prototype.makeSelection = function(x, y) {
 }
 
 Pentool.Model.prototype.updateSelection = function() {
-	if (this.selection.leftIndex) {
+	if (isNumeric(this.selection.leftIndex) && this.selection.leftIndex >= 0) {
 		this.selection.p2 = this.segments[this.selection.leftIndex].getP(2);
 		this.selection.p3 = this.segments[this.selection.leftIndex].getP(3);
 	}
 
-	if (this.selection.rightIndex) {
+	if (isNumeric(this.selection.rightIndex) && this.selection.rightIndex >= 0) {
 		this.selection.q1 = this.segments[this.selection.rightIndex].getP(1);
 	}
 
@@ -157,23 +164,43 @@ Pentool.Model.prototype.updateSelection = function() {
 
 Pentool.Model.prototype.moveSelection = function(x, y) {
 	if (this.selection) {
+		// console.log("moving selection: " + this.selection.)
+		//console.log(this.selection.selectedNode)
+		var rIndex = this.selection.rightIndex;
+		var lIndex = this.selection.leftIndex;
+		//debugger;
+		// debugger;
 		if (this.selection.selectedNode == 2) {
-			this.segments[this.selection.leftIndex].setP(2, Vector.create([x, y]));
-			this.updateSelection();
-			this.updateObservers(this);
+			this.segments[lIndex].setP(2, Vector.create([x, y]));
+			// this.updateSelection();
+			// this.updateObservers(this);
 		}
 
 		if (this.selection.selectedNode == 3) {
-			this.segments[this.selection.leftIndex].setP(3, Vector.create([x, y]));
-			this.updateSelection();
-			this.updateObservers(this);
+			var pointIndex = 3
+			if (lIndex == null || lIndex == undefined) {
+				lIndex = rIndex
+				pointIndex = 0
+			}
+
+			console.log("MoveSelection lIndex: " + lIndex + ", rIndex: " + rIndex + " pointIndex: " + pointIndex);
+			this.segments[lIndex].setP(pointIndex, Vector.create([x, y]));
+			if (rIndex !== null && rIndex !== undefined) {
+				this.segments[rIndex].setP(0, Vector.create([x, y]));
+			}
+			// this.updateSelection();
+			// this.updateObservers(this);
 		}
 
 		if (this.selection.selectedNode == 1) {
-			this.segments[this.selection.rightIndex].setP(1, Vector.create([x, y]));
-			this.updateSelection();
-			this.updateObservers(this);
+			this.segments[rIndex].setP(1, Vector.create([x, y]));
+			// this.updateSelection();
+			// this.updateObservers(this);
 		}
+
+		this.updateSelection();
+		this.updateObservers(this);
+
 	}
 }
 
@@ -301,7 +328,7 @@ Pentool.View = function(model) {
 		//for now pretend in edit mode:
 		// debugger;
 		var result = self.model.makeSelection(x, y);
-		console.log(result);
+		//console.log(result);
 		self.dragging = true;
 	})
 
@@ -313,7 +340,9 @@ Pentool.View = function(model) {
 		var x = e.pageX - this.offsetLeft;
 		var y = e.pageY - this.offsetTop;
 		// console.log(x, y);
+
 		if (self.dragging) {
+			//debugger;
 			self.model.moveSelection(x, y);
 		}
 	})
@@ -349,7 +378,6 @@ Pentool.View.prototype.render = function() {
 	}
 
 	if (this.selectedPoint) {
-		// debugger;
 		var p2 = this.selectedPoint.p2;
 		var p3 = this.selectedPoint.p3;
 		var q1 = this.selectedPoint.q1;
@@ -360,6 +388,9 @@ Pentool.View.prototype.render = function() {
 				this.ctx.fillStyle = 'rgb(100, 200, 100)';
 			}
 			this.ctx.fillRect(p2.elements[0] - 2.5, p2.elements[1] - 2.5, 5, 5);
+			this.ctx.moveTo(p2.elements[0], p2.elements[1]);
+			this.ctx.lineTo(p3.elements[0], p3.elements[1]);
+			this.ctx.stroke();
 		}
 
 		if (p3) {
@@ -377,6 +408,9 @@ Pentool.View.prototype.render = function() {
 				this.ctx.fillStyle = 'rgb(100, 200, 100)';
 			}
 			this.ctx.fillRect(q1.elements[0] - 2.5, q1.elements[1] - 2.5, 5, 5);
+			this.ctx.moveTo(q1.elements[0], q1.elements[1]);
+			this.ctx.lineTo(p3.elements[0], p3.elements[1]);
+			this.ctx.stroke();
 		}
 	}
 }
@@ -385,7 +419,7 @@ Pentool.View.prototype.update = function(model) {
 	this.pixels = model.getCurvePixels();
 	this.controlPoints = model.getControlPoints();
 	this.selectedPoint = model.getSelectedPoint();
-	console.log("canvas update called");
+	// console.log("canvas update called");
 	// this._renderCanvas(pixels, controlPoints);
 }
 
@@ -411,10 +445,10 @@ Pentool.Renderer.prototype.render = function() {
 }
 
 Pentool.main = function() {
-	var p1 = Vector.create([3, 10]);
-	var p2 = Vector.create([150,200]);
-	var p3 = Vector.create([300, 100]);
-	var p4 = Vector.create([450, 450]);
+	var p1 = Vector.create([10, 10]);
+	var p2 = Vector.create([50,150]);
+	var p3 = Vector.create([150, 110]);
+	var p4 = Vector.create([200, 210]);
 
 	var model = new Pentool.Model();
 	var renderer = new Pentool.Renderer();
